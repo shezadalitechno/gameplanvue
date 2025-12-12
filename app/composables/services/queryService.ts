@@ -117,10 +117,21 @@ export async function getEmployeesNotCommentedToday(
   // Group tasks by employee
   const tasksByEmployee = groupByEmployee(filteredTasks)
 
-  // Find employees who haven't commented today
+  // Create a map of task name to set of employees who commented on it
+  const commentsByTask = new Map<string, Set<string>>()
+  allComments.forEach(comment => {
+    if (comment.reference_name && comment.reference_doctype === 'GP Task' && comment.owner) {
+      if (!commentsByTask.has(comment.reference_name)) {
+        commentsByTask.set(comment.reference_name, new Set())
+      }
+      commentsByTask.get(comment.reference_name)!.add(comment.owner)
+    }
+  })
+
+  // Find employees who haven't commented today and their tasks without comments
   const results: EmployeeQueryResult[] = []
 
-  for (const [email, tasks] of Object.entries(tasksByEmployee)) {
+  for (const [email, employeeTasks] of Object.entries(tasksByEmployee)) {
     if (!employeesWhoCommentedToday.has(email)) {
       const userComments = getCommentsByUser(allComments, email)
       const lastComment = userComments.sort((a, b) => {
@@ -129,10 +140,17 @@ export async function getEmployeesNotCommentedToday(
         return dateB - dateA
       })[0]
 
+      // Find tasks that don't have comments from this employee
+      const tasksWithoutComments = employeeTasks.filter(task => {
+        const taskComments = commentsByTask.get(task.name)
+        return !taskComments || !taskComments.has(email)
+      })
+
       results.push({
         employee: { email },
-        taskCount: tasks.length,
-        lastCommentDate: lastComment?.creation
+        taskCount: employeeTasks.length,
+        lastCommentDate: lastComment?.creation,
+        tasks: tasksWithoutComments
       })
     }
   }

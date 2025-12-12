@@ -1,7 +1,5 @@
 import type { GPTask, GPComment, GPActivity, GPProject, GPTeam, GPUserProfile } from '~/types/gameplan'
 
-const config = useRuntimeConfig()
-
 export async function apiCall<T>(doctype: string, options?: {
   fields?: string[]
   filters?: Record<string, any>

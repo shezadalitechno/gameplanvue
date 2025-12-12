@@ -2,13 +2,13 @@
 import { QueryType } from '~/types/query'
 import { useEmployeeQueries } from '~/composables/useEmployeeQueries'
 
-const { results, loading, error, refetch } = useEmployeeQueries(QueryType.NOT_UPDATED_TODAY)
+const { results, loading, error, refetch } = useEmployeeQueries(QueryType.NOT_COMMENTED_TODAY)
 </script>
 
 <template>
   <UDashboardPanel id="not-updated-today">
     <template #header>
-      <UDashboardNavbar title="Employees Not Updated Today">
+      <UDashboardNavbar title="Employees Not Commented Today">
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
@@ -45,17 +45,16 @@ const { results, loading, error, refetch } = useEmployeeQueries(QueryType.NOT_UP
 
       <CommonEmptyDataState
         v-else-if="!loading && results.length === 0"
-        title="All employees updated today"
-        description="Great! All employees have updated their tasks today."
+        title="All employees commented today"
+        description="Great! All employees have commented on their tasks today."
         icon="i-lucide-check-circle-2"
       />
 
       <div v-else class="space-y-4">
-        <ReportsEmployeeCard
+        <ReportsEmployeeTasksWidget
           v-for="(result, index) in results"
           :key="index"
           :employee="result"
-          :show-metrics="true"
         />
       </div>
     </template>

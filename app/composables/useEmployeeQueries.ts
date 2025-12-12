@@ -1,5 +1,6 @@
 import { ref, watch } from 'vue'
-import type { QueryType, EmployeeQueryResult } from '~/types/query'
+import { QueryType } from '~/types/query'
+import type { EmployeeQueryResult } from '~/types/query'
 import { useQueryStore } from '~/stores/query'
 import { useDataCacheStore } from '~/stores/dataCache'
 import {
