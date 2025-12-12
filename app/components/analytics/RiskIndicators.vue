@@ -56,7 +56,7 @@ const categoryColors: Record<string, string> = {
           :key="employee.email || 'unknown'"
           class="p-2 bg-elevated rounded text-sm"
         >
-          <p class="font-medium text-highlighted">{{ employee.name || employee.email || 'Unknown' }}</p>
+          <p class="font-medium text-highlighted">{{ employee.name || employee.full_name || employee.email || 'Unknown' }}</p>
           <p class="text-muted text-xs mt-1">{{ employee.reason }}</p>
           <UBadge
             :color="employee.severity === 'high' ? 'error' : employee.severity === 'medium' ? 'warning' : 'neutral'"

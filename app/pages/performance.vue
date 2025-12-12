@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { getAllTasks, getAllComments, getAllActivities } from '~/composables/services/api'
+import { getAllTasks, getAllComments, getAllActivities, getAllTeams, getAllUserProfiles } from '~/composables/services/api'
+import type { GPUserProfile } from '~/types/gameplan'
 import { calculatePerformanceMetrics, calculateRiskIndicators, calculateTeamMetrics, calculateTrends } from '~/composables/services/performanceService'
-import { getAllTeams } from '~/composables/services/api'
 import { useDataCacheStore } from '~/stores/dataCache'
 
 const dataCacheStore = useDataCacheStore()
@@ -12,24 +12,27 @@ let tasks: any[] = []
 let comments: any[] = []
 let activities: any[] = []
 let teams: any[] = []
+let userProfiles: GPUserProfile[] = []
 let performanceMetrics: any[] = []
 let riskIndicators: any[] = []
 let teamMetrics: any[] = []
 let trends: any[] = []
 
 try {
-  // Fetch data
-  const [tasksData, commentsData, activitiesData, teamsData] = await Promise.all([
+  // Fetch data including user profiles
+  const [tasksData, commentsData, activitiesData, teamsData, userProfilesData] = await Promise.all([
     getAllTasks().catch(() => []),
     getAllComments().catch(() => []),
     getAllActivities().catch(() => []),
-    getAllTeams().catch(() => [])
+    getAllTeams().catch(() => []),
+    getAllUserProfiles().catch(() => [])
   ])
 
   tasks = tasksData
   comments = commentsData
   activities = activitiesData
   teams = teamsData
+  userProfiles = userProfilesData
 
   // Cache data
   dataCacheStore.setTasks(tasks)
@@ -37,9 +40,54 @@ try {
   dataCacheStore.setActivities(activities)
   dataCacheStore.setTeams(teams)
 
+  // Create a map of email to user profile for quick lookup
+  const userProfileMap = new Map<string, GPUserProfile>()
+  userProfiles.forEach(profile => {
+    if (profile.email) {
+      userProfileMap.set(profile.email.toLowerCase(), profile)
+    }
+  })
+
   // Calculate metrics
   performanceMetrics = calculatePerformanceMetrics(tasks, comments, activities)
+  
+  // Enrich performance metrics with user profile data (names)
+  performanceMetrics = performanceMetrics.map(metric => {
+    const email = metric.employee?.email
+    if (email) {
+      const profile = userProfileMap.get(email.toLowerCase())
+      if (profile) {
+        return {
+          ...metric,
+          employee: {
+            ...metric.employee,
+            name: profile.name,
+            full_name: profile.full_name || profile.name
+          }
+        }
+      }
+    }
+    return metric
+  })
+
   riskIndicators = calculateRiskIndicators(tasks, activities)
+  
+  // Enrich risk indicators with user profile data
+  riskIndicators = riskIndicators.map(indicator => ({
+    ...indicator,
+    employees: indicator.employees.map(emp => {
+      const profile = userProfileMap.get(emp.email?.toLowerCase() || '')
+      if (profile) {
+        return {
+          ...emp,
+          name: profile.name,
+          full_name: profile.full_name || profile.name
+        }
+      }
+      return emp
+    })
+  }))
+
   teamMetrics = calculateTeamMetrics(tasks, teams)
   trends = calculateTrends(tasks, 30)
 } catch (err: any) {

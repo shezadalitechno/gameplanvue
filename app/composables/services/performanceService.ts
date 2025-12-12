@@ -11,10 +11,19 @@ export function calculatePerformanceMetrics(
   comments: GPComment[],
   activities: GPActivity[]
 ): PerformanceMetrics[] {
+  if (!tasks || tasks.length === 0) {
+    return []
+  }
+
   const tasksByEmployee = groupByEmployee(tasks)
   const metrics: PerformanceMetrics[] = []
 
   for (const [email, employeeTasks] of Object.entries(tasksByEmployee)) {
+    // Skip if email is empty, invalid, or tasks array is invalid
+    if (!email || typeof email !== 'string' || email.trim() === '' || !employeeTasks || employeeTasks.length === 0) {
+      continue
+    }
+
     const completedTasks = employeeTasks.filter(t => t.status === 'Completed' || t.status === 'Closed')
     const totalTasks = employeeTasks.length
     const completionRate = totalTasks > 0 ? (completedTasks.length / totalTasks) * 100 : 0
@@ -34,9 +43,15 @@ export function calculatePerformanceMetrics(
       .filter(a => a.creation)
       .sort((a, b) => new Date(b.creation!).getTime() - new Date(a.creation!).getTime())[0]
 
+    // Ensure email is trimmed and valid
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail) {
+      continue
+    }
+
     metrics.push({
-      employee: { email },
-      score,
+      employee: { email: trimmedEmail },
+      score: isNaN(score) || !isFinite(score) ? 0 : score,
       rank: 0, // Will be set after sorting
       tasksCompleted: completedTasks.length,
       tasksTotal: totalTasks,
@@ -49,11 +64,22 @@ export function calculatePerformanceMetrics(
 
   // Sort by score and assign ranks
   metrics.sort((a, b) => b.score - a.score)
-  metrics.forEach((metric, index) => {
+  
+  // Filter out any invalid metrics before assigning ranks
+  const validMetrics = metrics.filter(m => 
+    m && 
+    m.employee && 
+    m.employee.email && 
+    typeof m.employee.email === 'string' && 
+    m.employee.email.trim() !== ''
+  )
+  
+  // Assign ranks only to valid metrics
+  validMetrics.forEach((metric, index) => {
     metric.rank = index + 1
   })
 
-  return metrics
+  return validMetrics
 }
 
 export function calculateRiskIndicators(
