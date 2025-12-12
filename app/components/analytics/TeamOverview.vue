@@ -14,7 +14,7 @@ const columns = [
   {
     accessorKey: 'averageCompletionRate',
     header: 'Completion Rate',
-    cell: ({ row }: any) => `${row.averageCompletionRate.toFixed(1)}%`
+    cell: ({ row }: any) => `${(row.averageCompletionRate ?? 0).toFixed(1)}%`
   }
 ]
 </script>

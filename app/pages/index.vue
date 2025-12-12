@@ -56,7 +56,8 @@ const totalBacklogTasks = computed(() => {
 const avgCompletionRate = computed(() => {
   if (!completionRates || completionRates.length === 0) return 0
   const total = completionRates.reduce((sum, emp) => sum + (emp.completionRate || 0), 0)
-  return total / completionRates.length
+  const average = total / completionRates.length
+  return isNaN(average) || !isFinite(average) ? 0 : average
 })
 </script>
 
@@ -116,7 +117,7 @@ const avgCompletionRate = computed(() => {
             />
             <AnalyticsKpiCard
               title="Avg Completion Rate"
-              :value="`${avgCompletionRate.toFixed(1)}%`"
+              :value="`${(avgCompletionRate ?? 0).toFixed(1)}%`"
               icon="i-lucide-trending-up"
               color="success"
               :to="'/reports/completion-rate'"

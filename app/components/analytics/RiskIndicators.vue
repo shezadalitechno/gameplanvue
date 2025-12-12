@@ -53,10 +53,10 @@ const categoryColors: Record<string, string> = {
       <div v-if="expanded[indicator.category] && indicator.employees.length > 0" class="mt-4 pt-4 border-t border-default space-y-2 max-h-64 overflow-y-auto">
         <div
           v-for="employee in indicator.employees"
-          :key="employee.email"
+          :key="employee.email || 'unknown'"
           class="p-2 bg-elevated rounded text-sm"
         >
-          <p class="font-medium text-highlighted">{{ employee.name || employee.email }}</p>
+          <p class="font-medium text-highlighted">{{ employee.name || employee.email || 'Unknown' }}</p>
           <p class="text-muted text-xs mt-1">{{ employee.reason }}</p>
           <UBadge
             :color="employee.severity === 'high' ? 'error' : employee.severity === 'medium' ? 'warning' : 'neutral'"

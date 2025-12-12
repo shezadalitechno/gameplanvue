@@ -22,8 +22,8 @@ const bottomPerformers = computed(() => [...props.metrics].reverse().slice(0, 10
         :data="topPerformers"
         :columns="[
           { accessorKey: 'rank', header: 'Rank', cell: ({ row }) => `#${row.rank}` },
-          { accessorKey: 'employee.email', header: 'Employee', cell: ({ row }) => row.employee.email || row.employee.name || 'Unknown' },
-          { accessorKey: 'score', header: 'Score', cell: ({ row }) => row.score.toFixed(1) },
+          { accessorKey: 'employee.email', header: 'Employee', cell: ({ row }) => row.employee?.email || row.employee?.name || row.employee?.full_name || 'Unknown' },
+          { accessorKey: 'score', header: 'Score', cell: ({ row }) => (row.score ?? 0).toFixed(1) },
           { accessorKey: 'tasksCompleted', header: 'Completed' }
         ]"
         :ui="{
@@ -44,8 +44,8 @@ const bottomPerformers = computed(() => [...props.metrics].reverse().slice(0, 10
         :data="bottomPerformers"
         :columns="[
           { accessorKey: 'rank', header: 'Rank', cell: ({ row }) => `#${row.rank}` },
-          { accessorKey: 'employee.email', header: 'Employee', cell: ({ row }) => row.employee.email || row.employee.name || 'Unknown' },
-          { accessorKey: 'score', header: 'Score', cell: ({ row }) => row.score.toFixed(1) },
+          { accessorKey: 'employee.email', header: 'Employee', cell: ({ row }) => row.employee?.email || row.employee?.name || row.employee?.full_name || 'Unknown' },
+          { accessorKey: 'score', header: 'Score', cell: ({ row }) => (row.score ?? 0).toFixed(1) },
           { accessorKey: 'tasksCompleted', header: 'Completed' }
         ]"
         :ui="{
