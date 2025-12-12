@@ -1,6 +1,7 @@
 import { ref, watch } from 'vue'
 import { QueryType } from '~/types/query'
 import type { EmployeeQueryResult } from '~/types/query'
+import type { GPUserProfile } from '~/types/gameplan'
 import { useQueryStore } from '~/stores/query'
 import { useDataCacheStore } from '~/stores/dataCache'
 import {
@@ -11,7 +12,7 @@ import {
   getTaskCompletionRates,
   getTasksNotUpdatedByDateRange
 } from './services/queryService'
-import { getAllTasks, getAllComments, getAllActivities, getAllProjects, getAllTeams } from './services/api'
+import { getAllTasks, getAllComments, getAllActivities, getAllProjects, getAllTeams, getAllUserProfiles } from './services/api'
 
 export function useEmployeeQueries(queryType: QueryType) {
   const queryStore = useQueryStore()
@@ -31,12 +32,13 @@ export function useEmployeeQueries(queryType: QueryType) {
     try {
       // Ensure we have cached data
       if (dataCacheStore.isStale || dataCacheStore.tasks.length === 0) {
-        const [tasks, comments, activities, projects, teams] = await Promise.all([
+        const [tasks, comments, activities, projects, teams, userProfiles] = await Promise.all([
           getAllTasks(),
           getAllComments(),
           getAllActivities(),
           getAllProjects(),
-          getAllTeams()
+          getAllTeams(),
+          getAllUserProfiles()
         ])
 
         dataCacheStore.setTasks(tasks)
@@ -45,6 +47,17 @@ export function useEmployeeQueries(queryType: QueryType) {
         dataCacheStore.setProjects(projects)
         dataCacheStore.setTeams(teams)
       }
+
+      // Fetch user profiles if not cached
+      const userProfiles = await getAllUserProfiles()
+      
+      // Create a map of email to user profile for quick lookup
+      const userProfileMap = new Map<string, GPUserProfile>()
+      userProfiles.forEach(profile => {
+        if (profile.email) {
+          userProfileMap.set(profile.email.toLowerCase(), profile)
+        }
+      })
 
       let queryResults: EmployeeQueryResult[] = []
 
@@ -84,8 +97,27 @@ export function useEmployeeQueries(queryType: QueryType) {
           throw new Error(`Unknown query type: ${queryType}`)
       }
 
-      results.value = queryResults
-      queryStore.setResults(queryResults)
+      // Enrich results with user profile data (names)
+      const enrichedResults = queryResults.map(result => {
+        const email = result.employee.email
+        if (email) {
+          const profile = userProfileMap.get(email.toLowerCase())
+          if (profile) {
+            return {
+              ...result,
+              employee: {
+                ...result.employee,
+                name: profile.name,
+                full_name: profile.full_name || profile.name
+              }
+            }
+          }
+        }
+        return result
+      })
+
+      results.value = enrichedResults
+      queryStore.setResults(enrichedResults)
     } catch (err: any) {
       error.value = err
       queryStore.setError(err)

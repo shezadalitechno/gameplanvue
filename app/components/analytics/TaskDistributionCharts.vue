@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { GPTask } from '~/types/gameplan'
-import { VisXYContainer, VisPie, VisAxis, VisBar, VisTooltip } from '@unovis/vue'
+import { VisXYContainer, VisSingleContainer, VisDonut, VisAxis, VisGroupedBar, VisTooltip } from '@unovis/vue'
 
 const props = defineProps<{
   tasks: GPTask[]
@@ -41,19 +41,19 @@ const pieColors = ['var(--ui-primary)', 'var(--ui-success)', 'var(--ui-warning)'
         <h3 class="text-lg font-semibold">Tasks by Status</h3>
       </template>
       <div ref="statusCardRef" class="h-80">
-        <VisXYContainer
+        <VisSingleContainer
           v-if="tasksByStatus.length > 0 && statusWidth > 0"
           :data="tasksByStatus"
           :width="statusWidth"
           :height="320"
         >
-          <VisPie
+          <VisDonut
             :value="(d) => d.value"
-            :label="(d) => d.label"
+            :arc-label="(d) => d.label"
             :colors="pieColors"
           />
           <VisTooltip />
-        </VisXYContainer>
+        </VisSingleContainer>
         <div v-else class="flex items-center justify-center h-full text-muted">
           <div class="text-center">
             <UIcon name="i-lucide-pie-chart" class="size-12 mb-2 opacity-50" />
@@ -75,7 +75,7 @@ const pieColors = ['var(--ui-primary)', 'var(--ui-success)', 'var(--ui-warning)'
           :height="320"
           :padding="{ top: 20, bottom: 40, left: 40, right: 20 }"
         >
-          <VisBar
+          <VisGroupedBar
             :x="(d, i) => i"
             :y="(d) => d.value"
             color="var(--ui-primary)"
