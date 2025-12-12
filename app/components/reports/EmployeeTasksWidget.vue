@@ -17,24 +17,23 @@ const employeeName = computed(() => {
 </script>
 
 <template>
-  <UCard>
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-3">
+  <UCard class="p-3">
+    <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2 min-w-0 flex-1">
         <UAvatar
           :alt="employeeName"
-          size="md"
+          size="sm"
         />
-        <div>
-          <p class="font-medium text-highlighted">
-            {{ employeeName }}
-          </p>
-        </div>
+        <p class="font-medium text-sm text-highlighted truncate">
+          {{ employeeName }}
+        </p>
       </div>
 
       <UBadge
-        :label="`${taskCount} task${taskCount !== 1 ? 's' : ''}`"
+        :label="taskCount"
         variant="subtle"
         color="warning"
+        size="sm"
       />
     </div>
   </UCard>
