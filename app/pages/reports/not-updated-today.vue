@@ -3,6 +3,25 @@ import { QueryType } from '~/types/query'
 import { useEmployeeQueries } from '~/composables/useEmployeeQueries'
 
 const { results, loading, error, refetch } = useEmployeeQueries(QueryType.NOT_COMMENTED_TODAY)
+
+const columns = [
+  {
+    accessorKey: 'employee',
+    header: 'Employee',
+    cell: ({ row }: any) => {
+      const emp = row.employee
+      return emp.name || emp.full_name || emp.email
+    }
+  },
+  {
+    accessorKey: 'taskCount',
+    header: 'Tasks Not Commented',
+    cell: ({ row }: any) => {
+      const count = row.tasks?.length || 0
+      return count
+    }
+  }
+]
 </script>
 
 <template>
@@ -50,11 +69,14 @@ const { results, loading, error, refetch } = useEmployeeQueries(QueryType.NOT_CO
         icon="i-lucide-check-circle-2"
       />
 
-      <div v-else class="space-y-4">
-        <ReportsEmployeeTasksWidget
-          v-for="(result, index) in results"
-          :key="index"
-          :employee="result"
+      <div v-else class="overflow-x-auto">
+        <UTable
+          :data="results"
+          :columns="columns"
+          :ui="{
+            th: 'font-semibold text-xs px-3 py-2',
+            td: 'text-sm px-3 py-2'
+          }"
         />
       </div>
     </template>
