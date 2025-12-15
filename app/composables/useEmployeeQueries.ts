@@ -4,6 +4,7 @@ import type { EmployeeQueryResult } from '~/types/query'
 import type { GPUserProfile } from '~/types/gameplan'
 import { useQueryStore } from '~/stores/query'
 import { useDataCacheStore } from '~/stores/dataCache'
+import { useApiStore } from '~/stores/api'
 import {
   getEmployeesNotUpdatedToday,
   getEmployeesNotUpdatedYesterday,
@@ -13,6 +14,7 @@ import {
   getTasksNotUpdatedByDateRange
 } from './services/queryService'
 import { getAllTasks, getAllComments, getAllActivities, getAllProjects, getAllTeams, getAllUserProfiles } from './services/api'
+import { createUserFriendlyError, isApiKeyError, createSerializableError } from './utils/errorUtils'
 
 export function useEmployeeQueries(queryType: QueryType) {
   const queryStore = useQueryStore()
@@ -20,7 +22,7 @@ export function useEmployeeQueries(queryType: QueryType) {
 
   const results = ref<EmployeeQueryResult[]>([])
   const loading = ref(false)
-  const error = ref<Error | null>(null)
+  const error = ref<Record<string, any> | null>(null)
 
   async function executeQuery() {
     loading.value = true
@@ -30,9 +32,19 @@ export function useEmployeeQueries(queryType: QueryType) {
     queryStore.setLastQueryType(queryType)
 
     try {
+      // Check API key before making calls
+      const apiStore = useApiStore()
+      if (typeof window !== 'undefined') {
+        apiStore.loadApiKey()
+      }
+      
+      if (!apiStore.apiKey) {
+        throw createSerializableError('API key is required. Please configure it in settings.', 401)
+      }
+
       // Ensure we have cached data
       if (dataCacheStore.isStale || dataCacheStore.tasks.length === 0) {
-        const [tasks, comments, activities, projects, teams, userProfiles] = await Promise.all([
+        const [tasks, comments, activities, projects, teams, userProfiles] = await Promise.allSettled([
           getAllTasks(),
           getAllComments(),
           getAllActivities(),
@@ -41,23 +53,46 @@ export function useEmployeeQueries(queryType: QueryType) {
           getAllUserProfiles()
         ])
 
-        dataCacheStore.setTasks(tasks)
-        dataCacheStore.setComments(comments)
-        dataCacheStore.setActivities(activities)
-        dataCacheStore.setProjects(projects)
-        dataCacheStore.setTeams(teams)
+        // Handle results with error checking
+        const tasksResult = tasks.status === 'fulfilled' ? tasks.value : []
+        const commentsResult = comments.status === 'fulfilled' ? comments.value : []
+        const activitiesResult = activities.status === 'fulfilled' ? activities.value : []
+        const projectsResult = projects.status === 'fulfilled' ? projects.value : []
+        const teamsResult = teams.status === 'fulfilled' ? teams.value : []
+
+        // Check for API key errors
+        const failedResults = [tasks, comments, activities, projects, teams, userProfiles]
+          .filter(r => r.status === 'rejected' && isApiKeyError(r.reason))
+        
+        if (failedResults.length > 0) {
+          throw createUserFriendlyError(failedResults[0].reason)
+        }
+
+        dataCacheStore.setTasks(tasksResult)
+        dataCacheStore.setComments(commentsResult)
+        dataCacheStore.setActivities(activitiesResult)
+        dataCacheStore.setProjects(projectsResult)
+        dataCacheStore.setTeams(teamsResult)
       }
 
       // Fetch user profiles if not cached
-      const userProfiles = await getAllUserProfiles()
+      const userProfilesResult = await getAllUserProfiles().catch(err => {
+        if (isApiKeyError(err)) {
+          throw createUserFriendlyError(err)
+        }
+        console.warn('Failed to fetch user profiles:', err)
+        return []
+      })
       
       // Create a map of email to user profile for quick lookup
       const userProfileMap = new Map<string, GPUserProfile>()
-      userProfiles.forEach(profile => {
-        if (profile.email) {
-          userProfileMap.set(profile.email.toLowerCase(), profile)
-        }
-      })
+      if (userProfilesResult && Array.isArray(userProfilesResult)) {
+        userProfilesResult.forEach(profile => {
+          if (profile?.email) {
+            userProfileMap.set(profile.email.toLowerCase(), profile)
+          }
+        })
+      }
 
       let queryResults: EmployeeQueryResult[] = []
 
@@ -94,11 +129,13 @@ export function useEmployeeQueries(queryType: QueryType) {
           }
           break
         default:
-          throw new Error(`Unknown query type: ${queryType}`)
+          throw createSerializableError(`Unknown query type: ${queryType}`)
       }
 
       // Enrich results with user profile data (names)
-      const enrichedResults = queryResults.map(result => {
+      const enrichedResults = (queryResults || []).map(result => {
+        if (!result || !result.employee) return result
+        
         const email = result.employee.email
         if (email) {
           const profile = userProfileMap.get(email.toLowerCase())
@@ -107,8 +144,8 @@ export function useEmployeeQueries(queryType: QueryType) {
               ...result,
               employee: {
                 ...result.employee,
-                name: profile.name,
-                full_name: profile.full_name || profile.name
+                name: profile.name || email,
+                full_name: profile.full_name || profile.name || email
               }
             }
           }
@@ -119,8 +156,10 @@ export function useEmployeeQueries(queryType: QueryType) {
       results.value = enrichedResults
       queryStore.setResults(enrichedResults)
     } catch (err: any) {
-      error.value = err
-      queryStore.setError(err)
+      const friendlyError = createUserFriendlyError(err)
+      error.value = friendlyError
+      // Store as plain object in store too
+      queryStore.setError(friendlyError)
       console.error('Query execution failed:', err)
     } finally {
       loading.value = false

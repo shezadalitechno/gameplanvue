@@ -47,13 +47,19 @@ export const useApiStore = defineStore('api', {
 
       try {
         // Test with a simple API call (goes through server proxy which adds auth)
-        const response = await $fetch('/api/gameplan/GP Team?limit_page_length=1')
+        const response = await $fetch('/api/gameplan/GP Team?limit_page_length=1', {
+          headers: {
+            'X-API-Key': this.apiKey
+          }
+        })
 
         this.isTestingConnection = false
         return true
       } catch (error: any) {
         this.isTestingConnection = false
-        this.connectionError = error.message || 'Connection failed'
+        const errorMessage = error.data?.message || error.statusMessage || error.message || 'Connection failed'
+        this.connectionError = errorMessage
+        console.error('Connection test failed:', error)
         return false
       }
     }

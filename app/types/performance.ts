@@ -10,6 +10,14 @@ export interface PerformanceMetrics {
   activitiesCount: number
   lastActivityDate?: string
   trend?: 'improving' | 'declining' | 'stable'
+  /**
+   * Optional activity-level metrics for a recent time window (e.g. last 7 days).
+   * These are derived fields to support individual performance dashboards.
+   */
+  activityWindowDays?: number
+  recentActivitiesCount?: number
+  activeDaysCount?: number
+  avgActivitiesPerDay?: number
 }
 
 export interface RiskIndicator {

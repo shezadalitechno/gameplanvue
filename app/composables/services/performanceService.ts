@@ -31,6 +31,27 @@ export function calculatePerformanceMetrics(
     const userComments = getCommentsByUser(comments, email)
     const userActivities = getActivitiesByUser(activities, email)
 
+    // Calculate recent activity metrics (last 7 days) for individual performance views
+    const activityWindowDays = 7
+    const cutoffDate = getDaysAgo(activityWindowDays)
+    const recentActivities = (userActivities || []).filter(a => {
+      if (!a?.creation) return false
+      const createdAt = new Date(a.creation)
+      return createdAt >= cutoffDate
+    })
+
+    const activeDaysSet = new Set<string>()
+    recentActivities.forEach(a => {
+      if (a?.creation) {
+        activeDaysSet.add(new Date(a.creation).toDateString())
+      }
+    })
+
+    const recentActivitiesCount = recentActivities.length
+    const activeDaysCount = activeDaysSet.size
+    const avgActivitiesPerDay =
+      activityWindowDays > 0 ? Math.round((recentActivitiesCount / activityWindowDays) * 100) / 100 : 0
+
     // Calculate score (weighted: 50% completion, 30% activity, 20% comments)
     const activityScore = Math.min(userActivities.length / 10, 1) * 30 // Normalize to 30 points max
     const commentScore = Math.min(userComments.length / 5, 1) * 20 // Normalize to 20 points max
@@ -58,7 +79,11 @@ export function calculatePerformanceMetrics(
       commentsCount: userComments.length,
       activitiesCount: userActivities.length,
       lastActivityDate: lastActivity?.creation,
-      trend: 'stable' // Will be calculated with historical data
+      trend: 'stable', // Will be calculated with historical data
+      activityWindowDays,
+      recentActivitiesCount,
+      activeDaysCount,
+      avgActivitiesPerDay
     })
   }
 
@@ -266,6 +291,32 @@ export function calculateTrends(tasks: GPTask[], days: number = 30): TrendData[]
     trends.push({
       date,
       value: tasksOnDate.length,
+      label: date.toLocaleDateString()
+    })
+  }
+
+  return trends
+}
+
+export function calculateActivityTrends(activities: GPActivity[], days: number = 7): TrendData[] {
+  const trends: TrendData[] = []
+
+  for (let i = days; i >= 0; i--) {
+    const date = getDaysAgo(i)
+    const startOfDay = new Date(date)
+    startOfDay.setHours(0, 0, 0, 0)
+    const endOfDay = new Date(date)
+    endOfDay.setHours(23, 59, 59, 999)
+
+    const activitiesOnDate = (activities || []).filter(activity => {
+      if (!activity?.creation) return false
+      const createdAt = new Date(activity.creation)
+      return createdAt >= startOfDay && createdAt <= endOfDay
+    })
+
+    trends.push({
+      date,
+      value: activitiesOnDate.length,
       label: date.toLocaleDateString()
     })
   }

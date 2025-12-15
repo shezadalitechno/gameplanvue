@@ -1,4 +1,6 @@
 import type { GPTask, GPComment, GPActivity, GPProject, GPTeam, GPUserProfile } from '~/types/gameplan'
+import { useApiStore } from '~/stores/api'
+import { createUserFriendlyError, isApiKeyError, createSerializableError } from '../utils/errorUtils'
 
 export async function apiCall<T>(doctype: string, options?: {
   fields?: string[]
@@ -6,6 +8,18 @@ export async function apiCall<T>(doctype: string, options?: {
   limit_start?: number
   limit_page_length?: number
 }): Promise<T[]> {
+  // Get API key from store
+  const apiStore = useApiStore()
+  if (typeof window !== 'undefined') {
+    apiStore.loadApiKey()
+  }
+  
+  const apiKey = apiStore.apiKey
+
+  if (!apiKey) {
+    throw createSerializableError('API key is required. Please configure it in settings.', 401)
+  }
+
   const params: Record<string, string> = {}
 
   if (options?.fields) {
@@ -23,29 +37,59 @@ export async function apiCall<T>(doctype: string, options?: {
   // Build filters query string if provided
   if (options?.filters) {
     Object.entries(options.filters).forEach(([key, value]) => {
-      params[key] = String(value)
+      if (value !== undefined && value !== null) {
+        params[key] = typeof value === 'object' ? JSON.stringify(value) : String(value)
+      }
     })
   }
 
   const queryString = new URLSearchParams(params).toString()
-  const url = `/api/gameplan/${doctype}${queryString ? `?${queryString}` : ''}`
+  // URL encode the doctype name to handle spaces and special characters
+  const encodedDoctype = encodeURIComponent(doctype)
+  const url = `/api/gameplan/${encodedDoctype}${queryString ? `?${queryString}` : ''}`
 
   try {
-    const response = await $fetch<any>(url)
+    const response = await $fetch<any>(url, {
+      headers: {
+        'X-API-Key': apiKey
+      }
+    })
 
-    // Handle different response formats
+    // Handle different response formats from GamePlan API
     if (Array.isArray(response)) {
       return response as T[]
     }
 
+    // Handle wrapped response with 'data' property
     if (response && typeof response === 'object' && 'data' in response) {
-      return (response.data as T[]) || []
+      const data = response.data
+      if (Array.isArray(data)) {
+        return data as T[]
+      }
+      // If data is a single object, wrap it in an array
+      if (data && typeof data === 'object') {
+        return [data] as T[]
+      }
     }
 
+    // Handle single object response (wrap in array)
+    if (response && typeof response === 'object' && !Array.isArray(response)) {
+      return [response] as T[]
+    }
+
+    // Empty response
     return []
-  } catch (error) {
-    console.error(`API call failed for ${doctype}:`, error)
-    throw error
+  } catch (error: any) {
+    console.error(`API call failed for ${doctype}:`, {
+      error,
+      message: error.message,
+      statusCode: error.statusCode,
+      statusMessage: error.statusMessage,
+      data: error.data
+    })
+    
+    // Throw user-friendly error
+    throw createUserFriendlyError(error)
   }
 }
 
@@ -54,9 +98,21 @@ export async function getAllWithPagination<T>(
   fields?: string[],
   pageSize: number = 1000
 ): Promise<T[]> {
+  // Check API key before starting pagination
+  const apiStore = useApiStore()
+  if (typeof window !== 'undefined') {
+    apiStore.loadApiKey()
+  }
+  
+  if (!apiStore.apiKey) {
+    throw new Error('API key is required. Please configure it in settings.')
+  }
+
   const allResults: T[] = []
   let limitStart = 0
   let hasMore = true
+  let consecutiveErrors = 0
+  const maxConsecutiveErrors = 3
 
   while (hasMore) {
     try {
@@ -65,6 +121,9 @@ export async function getAllWithPagination<T>(
         limit_start: limitStart,
         limit_page_length: pageSize
       })
+
+      // Reset error counter on success
+      consecutiveErrors = 0
 
       if (results.length === 0) {
         hasMore = false
@@ -77,9 +136,26 @@ export async function getAllWithPagination<T>(
           hasMore = false
         }
       }
-    } catch (error) {
+    } catch (error: any) {
+      consecutiveErrors++
       console.error(`Pagination error for ${doctype} at offset ${limitStart}:`, error)
-      hasMore = false
+      
+      // If it's an API key error, throw immediately (as plain object)
+      if (error?.message?.includes('API key') || error?.statusCode === 401) {
+        throw createUserFriendlyError(error)
+      }
+      
+      // For other errors, log and stop pagination
+      console.warn(`Non-critical pagination error, stopping pagination`)
+      
+      // If we've had too many consecutive errors, stop pagination
+      if (consecutiveErrors >= maxConsecutiveErrors) {
+        console.warn(`Stopping pagination after ${maxConsecutiveErrors} consecutive errors`)
+        hasMore = false
+      } else {
+        // Wait a bit before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
     }
   }
 

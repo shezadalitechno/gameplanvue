@@ -12,21 +12,32 @@ const UAvatar = resolveComponent('UAvatar')
 
 // Transform data for table
 const tableData = computed(() => {
+  if (!results.value || results.value.length === 0) return []
+  
   return results.value.map((result) => ({
-    employeeName: result.employee.name || result.employee.full_name || result.employee.email,
-    employeeEmail: result.employee.email,
-    totalTasks: result.taskCount || 0,
-    lastUpdateDate: result.lastUpdateDate,
-    backlogCount: result.backlogCount || 0
+    employeeName: result?.employee?.name || result?.employee?.full_name || result?.employee?.email || 'Unknown',
+    employeeEmail: result?.employee?.email || '',
+    totalTasks: result?.taskCount || 0,
+    lastUpdateDate: result?.lastUpdateDate || null,
+    backlogCount: result?.backlogCount || 0
   }))
 })
 
 // Summary metrics
 const summaryMetrics = computed(() => {
+  if (!results.value || results.value.length === 0) {
+    return {
+      totalEmployees: 0,
+      totalTasks: 0,
+      totalOverdue: 0,
+      employeesWithOverdue: 0
+    }
+  }
+  
   const totalEmployees = results.value.length
-  const totalTasks = results.value.reduce((sum, r) => sum + (r.taskCount || 0), 0)
-  const totalOverdue = results.value.reduce((sum, r) => sum + (r.backlogCount || 0), 0)
-  const employeesWithOverdue = results.value.filter(r => (r.backlogCount || 0) > 0).length
+  const totalTasks = results.value.reduce((sum, r) => sum + (r?.taskCount || 0), 0)
+  const totalOverdue = results.value.reduce((sum, r) => sum + (r?.backlogCount || 0), 0)
+  const employeesWithOverdue = results.value.filter(r => (r?.backlogCount || 0) > 0).length
   
   return {
     totalEmployees,

@@ -59,6 +59,7 @@ const bottomPerformers = computed(() => {
           { accessorKey: 'rank', header: 'Rank', cell: ({ row }) => row.rank ? `#${row.rank}` : 'N/A' },
           { accessorKey: 'employee.email', header: 'Employee', cell: ({ row }) => row.employee?.name || row.employee?.full_name || row.employee?.email || 'Unknown' },
           { accessorKey: 'score', header: 'Score', cell: ({ row }) => (row.score ?? 0).toFixed(1) },
+          { accessorKey: 'recentActivitiesCount', header: 'Activity (7d)', cell: ({ row }) => row.recentActivitiesCount ?? row.activitiesCount ?? 0 },
           { accessorKey: 'tasksCompleted', header: 'Completed' }
         ]"
         :ui="{
@@ -85,6 +86,7 @@ const bottomPerformers = computed(() => {
           { accessorKey: 'rank', header: 'Rank', cell: ({ row }) => row.rank ? `#${row.rank}` : 'N/A' },
           { accessorKey: 'employee.email', header: 'Employee', cell: ({ row }) => row.employee?.name || row.employee?.full_name || row.employee?.email || 'Unknown' },
           { accessorKey: 'score', header: 'Score', cell: ({ row }) => (row.score ?? 0).toFixed(1) },
+          { accessorKey: 'recentActivitiesCount', header: 'Activity (7d)', cell: ({ row }) => row.recentActivitiesCount ?? row.activitiesCount ?? 0 },
           { accessorKey: 'tasksCompleted', header: 'Completed' }
         ]"
         :ui="{

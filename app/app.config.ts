@@ -5,6 +5,6 @@ export default defineAppConfig({
       neutral: 'zinc'
     }
   },
-  title: 'GamePlan Analytics Dashboard',
-  description: 'Employee activity and task management analytics platform'
+  title: 'TechnoServe Teams Update',
+  description: 'Team activity and task management analytics platform'
 })

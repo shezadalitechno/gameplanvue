@@ -12,7 +12,7 @@ export const useQueryStore = defineStore('query', {
     } as QueryFilters,
     results: [] as EmployeeQueryResult[],
     loading: false as boolean,
-    error: null as Error | null,
+    error: null as Record<string, any> | null,
     lastQueryType: null as QueryType | null
   }),
 
@@ -29,8 +29,17 @@ export const useQueryStore = defineStore('query', {
       this.loading = loading
     },
 
-    setError(error: Error | null) {
-      this.error = error
+    setError(error: Record<string, any> | Error | null) {
+      // Convert Error to plain object if needed
+      if (error instanceof Error) {
+        this.error = {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        }
+      } else {
+        this.error = error
+      }
     },
 
     clearResults() {

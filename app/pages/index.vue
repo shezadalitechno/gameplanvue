@@ -3,10 +3,12 @@ import { QueryType } from '~/types/query'
 import { getAllTasks, getAllComments } from '~/composables/services/api'
 import { getEmployeesNotUpdatedToday, getEmployeesNotCommentedToday, getEmployeesWithBacklog, getTaskCompletionRates } from '~/composables/services/queryService'
 import { useDataCacheStore } from '~/stores/dataCache'
+import { useApiStore } from '~/stores/api'
+import { createSerializableError } from '~/composables/utils/errorUtils'
 
 const dataCacheStore = useDataCacheStore()
 const loading = ref(true)
-const error = ref<Error | null>(null)
+const error = ref<Record<string, any> | null>(null)
 
 let tasks: any[] = []
 let comments: any[] = []
@@ -16,33 +18,75 @@ let backlog: any[] = []
 let completionRates: any[] = []
 
 try {
-  // Fetch data in parallel
-  const [tasksData, commentsData] = await Promise.all([
-    getAllTasks().catch(() => []),
-    getAllComments().catch(() => [])
+  // Check API key before making calls
+  const apiStore = useApiStore()
+  if (typeof window !== 'undefined') {
+    apiStore.loadApiKey()
+  }
+  
+  if (!apiStore.apiKey) {
+    throw createSerializableError('API key is required. Please configure it in settings.', 401)
+  }
+
+  // Fetch data in parallel with proper error handling
+  const [tasksData, commentsData] = await Promise.allSettled([
+    getAllTasks(),
+    getAllComments()
   ])
 
-  tasks = tasksData
-  comments = commentsData
+  // Handle tasks result
+  if (tasksData.status === 'fulfilled') {
+    tasks = tasksData.value || []
+  } else {
+    console.error('Failed to fetch tasks:', tasksData.reason)
+    const reason = tasksData.reason
+    // Throw immediately if it's an API key error
+    if (reason?.message?.includes('API key') || reason?.statusCode === 401) {
+      throw reason
+    }
+    // Otherwise, continue with empty array but log the error
+    tasks = []
+  }
+
+  // Handle comments result
+  if (commentsData.status === 'fulfilled') {
+    comments = commentsData.value || []
+  } else {
+    console.error('Failed to fetch comments:', commentsData.reason)
+    const reason = commentsData.reason
+    // Throw immediately if it's an API key error
+    if (reason?.message?.includes('API key') || reason?.statusCode === 401) {
+      throw reason
+    }
+    // Otherwise, continue with empty array but log the error
+    comments = []
+  }
 
   // Cache data
   dataCacheStore.setTasks(tasks)
   dataCacheStore.setComments(comments)
 
-  // Calculate KPIs in parallel
-  const [notUpdatedTodayData, notCommentedTodayData, backlogData, completionRatesData] = await Promise.all([
-    getEmployeesNotUpdatedToday(undefined, tasks).catch(() => []),
-    getEmployeesNotCommentedToday(undefined, tasks, comments).catch(() => []),
-    getEmployeesWithBacklog(undefined, tasks).catch(() => []),
-    getTaskCompletionRates(undefined, tasks).catch(() => [])
+  // Calculate KPIs in parallel with proper error handling
+  const [notUpdatedTodayData, notCommentedTodayData, backlogData, completionRatesData] = await Promise.allSettled([
+    getEmployeesNotUpdatedToday(undefined, tasks),
+    getEmployeesNotCommentedToday(undefined, tasks, comments),
+    getEmployeesWithBacklog(undefined, tasks),
+    getTaskCompletionRates(undefined, tasks)
   ])
 
-  notUpdatedToday = notUpdatedTodayData
-  notCommentedToday = notCommentedTodayData
-  backlog = backlogData
-  completionRates = completionRatesData
+  notUpdatedToday = notUpdatedTodayData.status === 'fulfilled' ? notUpdatedTodayData.value : []
+  notCommentedToday = notCommentedTodayData.status === 'fulfilled' ? notCommentedTodayData.value : []
+  backlog = backlogData.status === 'fulfilled' ? backlogData.value : []
+  completionRates = completionRatesData.status === 'fulfilled' ? completionRatesData.value : []
 } catch (err: any) {
-  error.value = err
+  // Convert error to plain object for serialization
+  error.value = {
+    message: err?.message || err?.statusMessage || 'An error occurred',
+    statusCode: err?.statusCode,
+    statusMessage: err?.statusMessage,
+    data: err?.data,
+    stack: err?.stack
+  }
   console.error('Dashboard data loading error:', err)
 } finally {
   loading.value = false
