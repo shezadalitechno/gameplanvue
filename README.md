@@ -1,10 +1,10 @@
-# GamePlan Analytics Dashboard
+# TechnoServe Teams Update
 
-A comprehensive analytics and reporting dashboard for GamePlan, built with Nuxt.js and Nuxt UI. This application provides real-time insights into employee activity, task management, performance metrics, and team analytics by connecting to the GamePlan API.
+A comprehensive analytics and reporting dashboard for TechnoServe teams, built with Nuxt.js and Nuxt UI. This application provides real-time insights into employee activity, task management, performance metrics, and team analytics by connecting to the GamePlan API.
 
 ## 🎯 Overview
 
-GamePlan Analytics Dashboard is a modern, full-stack web application designed to help teams and managers track and analyze their workforce productivity. Built with Vue 3, Nuxt.js, and deployed on Cloudflare Pages, it offers:
+TechnoServe Teams Update is a modern, full-stack web application designed to help teams and managers track and analyze their workforce productivity. Built with Vue 3, Nuxt.js, and deployed on Cloudflare Pages, it offers:
 
 - **Real-time Analytics**: Live data synchronization with GamePlan API
 - **Employee Activity Tracking**: Monitor updates, comments, and engagement
