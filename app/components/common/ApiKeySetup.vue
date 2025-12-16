@@ -2,12 +2,19 @@
 import { useApiStore } from '~/stores/api'
 
 const apiStore = useApiStore()
-const apiKey = ref(apiStore.apiKey || '')
+const apiKey = ref('')
 const isOpen = defineModel<boolean>({ default: false })
 
-onMounted(() => {
-  apiStore.loadApiKey()
-  apiKey.value = apiStore.apiKey
+watch(isOpen, (newValue) => {
+  if (newValue) {
+    // Only load when modal opens
+    apiStore.loadApiKey()
+    apiKey.value = apiStore.apiKey || ''
+  } else {
+    // Reset when closing
+    apiKey.value = ''
+    apiStore.connectionError = null
+  }
 })
 
 async function saveApiKey() {
@@ -25,7 +32,7 @@ function cancel() {
 </script>
 
 <template>
-  <UModal v-model="isOpen">
+  <UModal v-model="isOpen" :ui="{ width: 'w-full sm:max-w-md' }">
     <UCard>
       <template #header>
         <h3 class="text-lg font-semibold">API Key Setup</h3>

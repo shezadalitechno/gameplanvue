@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { isApiKeyError as checkApiKeyError } from '~/composables/utils/errorUtils'
+
 const props = defineProps<{
   error: Error | Record<string, any> | null
   request?: {
@@ -8,6 +10,10 @@ const props = defineProps<{
 }>()
 
 const expanded = ref(false)
+
+const isApiKeyError = computed(() => {
+  return checkApiKeyError(props.error)
+})
 
 // Normalize error to plain object
 const errorObj = computed(() => {
@@ -35,9 +41,19 @@ function copyToClipboard() {
 <template>
   <UCard v-if="errorObj" color="error" variant="subtle">
     <div class="flex items-start justify-between">
-      <div>
+      <div class="flex-1">
         <p class="font-medium text-error">Error</p>
         <p class="text-sm text-muted mt-1">{{ errorObj.message || 'An error occurred' }}</p>
+        <div v-if="isApiKeyError" class="mt-3">
+          <UButton
+            to="/settings"
+            color="primary"
+            variant="outline"
+            size="sm"
+            icon="i-lucide-settings"
+            label="Go to Settings"
+          />
+        </div>
       </div>
       <UButton
         :icon="expanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
