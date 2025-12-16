@@ -37,5 +37,24 @@ export default defineNuxtConfig({
         braceStyle: '1tbs'
       }
     }
+  },
+
+  nitro: {
+    // Optimize build performance and prevent hangs
+    preset: 'node-server',
+    // Disable experimental features that might cause hangs
+    experimental: {
+      wasm: false
+    },
+    // Reduce build complexity
+    prerender: {
+      crawlLinks: false
+    },
+    // Add build optimizations
+    esbuild: {
+      options: {
+        target: 'node18'
+      }
+    }
   }
 })

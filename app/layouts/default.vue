@@ -60,6 +60,12 @@ const links = [[{
     onSelect: () => {
       open.value = false
     }
+  }, {
+    label: 'Employee Tasks',
+    to: '/reports/employee-tasks',
+    onSelect: () => {
+      open.value = false
+    }
   }]
 }, {
   label: 'Settings',

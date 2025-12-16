@@ -11,7 +11,8 @@ import {
   getEmployeesNotCommentedToday,
   getEmployeesWithBacklog,
   getTaskCompletionRates,
-  getTasksNotUpdatedByDateRange
+  getTasksNotUpdatedByDateRange,
+  getEmployeeTasks
 } from './services/queryService'
 import { getAllTasks, getAllComments, getAllActivities, getAllProjects, getAllTeams, getAllUserProfiles } from './services/api'
 import { createUserFriendlyError, isApiKeyError, createSerializableError } from './utils/errorUtils'
@@ -127,6 +128,9 @@ export function useEmployeeQueries(queryType: QueryType) {
               cachedProjects
             )
           }
+          break
+        case QueryType.EMPLOYEE_TASKS:
+          queryResults = await getEmployeeTasks(queryStore.filters, cachedTasks, cachedProjects)
           break
         default:
           throw createSerializableError(`Unknown query type: ${queryType}`)

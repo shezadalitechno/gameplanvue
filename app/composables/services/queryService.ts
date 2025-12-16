@@ -280,3 +280,48 @@ export async function getTasksNotUpdatedByDateRange(
   return results
 }
 
+export async function getEmployeeTasks(
+  filters?: QueryFilters,
+  tasks?: GPTask[],
+  projects?: GPProject[]
+): Promise<EmployeeQueryResult[]> {
+  const allTasks = tasks || await getAllTasks()
+  let filteredTasks = allTasks
+
+  // Apply filters
+  if (filters?.team) {
+    const teamProjects = projects || await getAllProjects()
+    filteredTasks = getTasksByTeam(filteredTasks, filters.team, teamProjects)
+  }
+
+  if (filters?.project) {
+    filteredTasks = filteredTasks.filter(t => t.project === filters.project)
+  }
+
+  // Filter out completed/closed/done tasks
+  const activeTasks = filteredTasks.filter(
+    task => {
+      const status = task.status?.toLowerCase() || ''
+      return status !== 'completed' && status !== 'closed' && status !== 'done'
+    }
+  )
+
+  // Group by employee
+  const tasksByEmployee = groupByEmployee(activeTasks)
+
+  // Create results sorted by task count
+  const results: EmployeeQueryResult[] = Object.entries(tasksByEmployee)
+    .map(([email, tasks]) => ({
+      employee: { email },
+      taskCount: tasks.length,
+      tasks: tasks,
+      metrics: {
+        totalTasks: tasks.length,
+        inProgressTasks: tasks.filter(t => t.status === 'In Progress' || t.status === 'Open').length
+      }
+    }))
+    .sort((a, b) => (b.taskCount || 0) - (a.taskCount || 0))
+
+  return results
+}
+
