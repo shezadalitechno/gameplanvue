@@ -6,8 +6,10 @@ import { useEmployeeQueries } from '~/composables/useEmployeeQueries'
 import { formatDate } from '~/composables/utils/formatters'
 import type { GPTask } from '~/types/gameplan'
 import type { EmployeeQueryResult } from '~/types/query'
+import { useDataCacheStore } from '~/stores/dataCache'
 
 const { results, loading, error, refetch } = useEmployeeQueries(QueryType.EMPLOYEE_TASKS)
+const dataCacheStore = useDataCacheStore()
 
 const UBadge = resolveComponent('UBadge')
 const UAvatar = resolveComponent('UAvatar')
@@ -52,19 +54,34 @@ const tableData = computed(() => {
   }))
 })
 
+// Calculate done tasks count - for selected employee or all employees
+const doneTasksCount = computed(() => {
+  const allTasks = dataCacheStore.tasks
+  let tasksToCheck = allTasks
+  
+  // If an employee is selected, filter by that employee's email
+  if (selectedEmployeeEmail.value) {
+    tasksToCheck = allTasks.filter(task => task.assigned_to === selectedEmployeeEmail.value)
+  }
+  
+  return tasksToCheck.filter(task => {
+    const status = task.status?.toLowerCase() || ''
+    return status === 'done' || status === 'completed' || status === 'closed'
+  }).length
+})
+
 // Summary metrics (based on filtered results)
 const summaryMetrics = computed(() => {
   const dataToUse = selectedEmployeeData.value ? [selectedEmployeeData.value] : filteredResults.value
   const totalEmployees = dataToUse.length
   const totalTasks = dataToUse.reduce((sum, r) => sum + (r.taskCount || 0), 0)
   const inProgressTasks = dataToUse.reduce((sum, r) => sum + (r.metrics?.inProgressTasks || 0), 0)
-  const employeesWithTasks = dataToUse.filter(r => (r.taskCount || 0) > 0).length
   
   return {
     totalEmployees,
     totalTasks,
     inProgressTasks,
-    employeesWithTasks
+    doneTasks: doneTasksCount.value
   }
 })
 
@@ -275,11 +292,11 @@ const columns: TableColumn<typeof tableData.value[0]>[] = [
           <UCard>
             <div class="flex items-center gap-3">
               <div class="p-2 bg-success/10 rounded-lg">
-                <UIcon name="i-lucide-user-check" class="size-5 text-success" />
+                <UIcon name="i-lucide-check-circle-2" class="size-5 text-success" />
               </div>
               <div>
-                <p class="text-sm text-muted">With Tasks</p>
-                <p class="text-2xl font-semibold">{{ summaryMetrics.employeesWithTasks }}</p>
+                <p class="text-sm text-muted">Done Tasks</p>
+                <p class="text-2xl font-semibold">{{ summaryMetrics.doneTasks }}</p>
               </div>
             </div>
           </UCard>
